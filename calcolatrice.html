@@ -1,0 +1,151 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Functional Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+  />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen font-['Roboto']">
+  <div class="rounded-xl overflow-hidden w-[320px] sm:w-[320px] shadow-lg">
+    <!-- Display -->
+    <div id="display" class="bg-[#1a1a1a] text-white text-right text-[3.5rem] font-light px-6 py-4 rounded-t-xl select-none break-words min-h-[4.5rem]">
+      0
+    </div>
+    <!-- Buttons grid -->
+    <div class="grid grid-cols-4 grid-rows-5 text-center text-[1.75rem] font-light select-none">
+      <!-- Row 1: operators + - × ÷ -->
+      <button data-action="operator" data-value="+" class="bg-[#f0f0f0] border border-[#d9d9d9] py-4 hover:bg-gray-200 transition">+</button>
+      <button data-action="operator" data-value="-" class="bg-[#f0f0f0] border border-[#d9d9d9] py-4 hover:bg-gray-200 transition">-</button>
+      <button data-action="operator" data-value="*" class="bg-[#f0f0f0] border border-[#d9d9d9] py-4 hover:bg-gray-200 transition">×</button>
+      <button data-action="operator" data-value="/" class="bg-[#f0f0f0] border border-[#d9d9d9] py-4 hover:bg-gray-200 transition">÷</button>
+
+      <!-- Row 2: 7 8 9 = (orange) -->
+      <button data-action="number" data-value="7" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">7</button>
+      <button data-action="number" data-value="8" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">8</button>
+      <button data-action="number" data-value="9" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">9</button>
+      <button id="equals" class="row-span-4 bg-[#f07a58] border border-[#f07a58] text-black text-[2rem] font-normal py-0 flex items-center justify-center hover:bg-[#e36a4a] transition">
+        =
+      </button>
+
+      <!-- Row 3: 4 5 6 -->
+      <button data-action="number" data-value="4" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">4</button>
+      <button data-action="number" data-value="5" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">5</button>
+      <button data-action="number" data-value="6" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">6</button>
+
+      <!-- Row 4: 1 2 3 -->
+      <button data-action="number" data-value="1" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">1</button>
+      <button data-action="number" data-value="2" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">2</button>
+      <button data-action="number" data-value="3" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">3</button>
+
+      <!-- Row 5: 0 . C -->
+      <button data-action="number" data-value="0" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">0</button>
+      <button data-action="decimal" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">.</button>
+      <button id="clear" class="bg-white border border-[#d9d9d9] py-4 hover:bg-gray-100 transition">C</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const display = document.getElementById('display');
+      const buttons = document.querySelectorAll('button');
+      let currentInput = '0';
+      let lastInput = null;
+      let operator = null;
+      let resetNext = false;
+
+      function updateDisplay() {
+        display.textContent = currentInput;
+      }
+
+      buttons.forEach(button => {
+        button.addEventListener('click', () => {
+          const action = button.getAttribute('data-action');
+          const value = button.getAttribute('data-value');
+
+          if (action === 'number') {
+            if (resetNext) {
+              currentInput = value;
+              resetNext = false;
+            } else {
+              if (currentInput === '0') {
+                currentInput = value;
+              } else {
+                currentInput += value;
+              }
+            }
+            updateDisplay();
+          } else if (action === 'decimal') {
+            if (resetNext) {
+              currentInput = '0.';
+              resetNext = false;
+            } else if (!currentInput.includes('.')) {
+              currentInput += '.';
+            }
+            updateDisplay();
+          } else if (action === 'operator') {
+            if (operator && !resetNext) {
+              // Calculate previous operation first
+              calculate();
+            } else {
+              lastInput = parseFloat(currentInput);
+            }
+            operator = value;
+            resetNext = true;
+          }
+        });
+      });
+
+      document.getElementById('equals').addEventListener('click', () => {
+        if (operator) {
+          calculate();
+          operator = null;
+          resetNext = true;
+        }
+      });
+
+      document.getElementById('clear').addEventListener('click', () => {
+        currentInput = '0';
+        lastInput = null;
+        operator = null;
+        resetNext = false;
+        updateDisplay();
+      });
+
+      function calculate() {
+        const current = parseFloat(currentInput);
+        if (lastInput === null || operator === null) return;
+
+        let result;
+        switch (operator) {
+          case '+':
+            result = lastInput + current;
+            break;
+          case '-':
+            result = lastInput - current;
+            break;
+          case '*':
+            result = lastInput * current;
+            break;
+          case '/':
+            result = current === 0 ? 'Error' : lastInput / current;
+            break;
+          default:
+            return;
+        }
+        currentInput = result.toString();
+        lastInput = result === 'Error' ? null : result;
+        updateDisplay();
+      }
+
+      updateDisplay();
+    })();
+  </script>
+</body>
+</html>
