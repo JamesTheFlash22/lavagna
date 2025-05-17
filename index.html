@@ -787,6 +787,15 @@
         layer.batchDraw();
       });
 
+      shape.on('click tap', (e) => {
+        if (currentMode === 'select') {
+          selectedShapes = [shape];
+          tr.nodes([shape]);
+          showProperties([shape]);
+          layer.batchDraw();
+        }
+      });
+
       if (shape instanceof Konva.Text) {
         shape.originalFontSize = shape.fontSize();
         shape.on('transform', () => {
@@ -1028,37 +1037,67 @@
       resetMode();
       currentMode = 'cube';
       document.getElementById('shapes-btn').classList.add('active');
+      document.getElementById('canvas-container').classList.add('shape-draw-cursor');
+      disableStageDragging();
 
       const img = new Image();
       img.src = 'cubo.png';
-      img.onload = () => {
-        const pos = stage.getPointerPosition() || { x: 100, y: 100 };
+      
+      stage.on('mousedown', (e) => {
+        if (e.target !== stage) return;
+        isDrawing = true;
+        const pos = stage.getRelativePointerPosition();
+        startPos = pos;
+
+        img.onload = () => {
+          const group = new Konva.Group({
+            x: pos.x,
+            y: pos.y,
+            draggable: true,
+          });
+          
+          const cubeImage = new Konva.Image({
+            x: 0,
+            y: 0,
+            image: img,
+            width: 50,
+            height: 50,
+          });
+          group.add(cubeImage);
+          
+          layer.add(group);
+          currentShape = group;
+          addSelectionEvents(group);
+          layer.batchDraw();
+        };
+      });
+
+      stage.on('mousemove', () => {
+        if (!isDrawing || !currentShape) return;
+        const pos = stage.getRelativePointerPosition();
+        const dx = pos.x - startPos.x;
+        const dy = pos.y - startPos.y;
+
+        // Ridimensiona il cubo mentre lo tracci
+        const size = Math.max(Math.abs(dx), Math.abs(dy));
+        currentShape.findOne('Image').width(size);
+        currentShape.findOne('Image').height(size);
         
-        const group = new Konva.Group({
-          x: pos.x,
-          y: pos.y,
-          draggable: true,
-        });
-        
-        const cubeImage = new Konva.Image({
-          x: 0,
-          y: 0,
-          image: img,
-          width: 100,
-          height: 100,
-        });
-        group.add(cubeImage);
-        
-        layer.add(group);
-        addSelectionEvents(group);
-        selectedShapes = [group];
-        tr.nodes([group]);
-        showProperties([group]);
         layer.batchDraw();
-      };
-      img.onerror = () => {
-        console.error("Errore nel caricamento di cubo.png. Verifica il percorso.");
-      };
+      });
+
+      stage.on('mouseup', () => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        
+        if (currentShape) {
+          selectedShapes = [currentShape];
+          tr.nodes([currentShape]);
+          showProperties([currentShape]);
+          layer.batchDraw();
+        }
+        currentShape = null;
+      });
     }
 
     // Aggiungi piramide usando piramide.png
@@ -1066,37 +1105,67 @@
       resetMode();
       currentMode = 'pyramid';
       document.getElementById('shapes-btn').classList.add('active');
+      document.getElementById('canvas-container').classList.add('shape-draw-cursor');
+      disableStageDragging();
 
       const img = new Image();
       img.src = 'piramide.png';
-      img.onload = () => {
-        const pos = stage.getPointerPosition() || { x: 100, y: 100 };
+      
+      stage.on('mousedown', (e) => {
+        if (e.target !== stage) return;
+        isDrawing = true;
+        const pos = stage.getRelativePointerPosition();
+        startPos = pos;
+
+        img.onload = () => {
+          const group = new Konva.Group({
+            x: pos.x,
+            y: pos.y,
+            draggable: true,
+          });
+          
+          const pyramidImage = new Konva.Image({
+            x: 0,
+            y: 0,
+            image: img,
+            width: 50,
+            height: 50,
+          });
+          group.add(pyramidImage);
+          
+          layer.add(group);
+          currentShape = group;
+          addSelectionEvents(group);
+          layer.batchDraw();
+        };
+      });
+
+      stage.on('mousemove', () => {
+        if (!isDrawing || !currentShape) return;
+        const pos = stage.getRelativePointerPosition();
+        const dx = pos.x - startPos.x;
+        const dy = pos.y - startPos.y;
+
+        // Ridimensiona la piramide mentre la tracci
+        const size = Math.max(Math.abs(dx), Math.abs(dy));
+        currentShape.findOne('Image').width(size);
+        currentShape.findOne('Image').height(size);
         
-        const group = new Konva.Group({
-          x: pos.x,
-          y: pos.y,
-          draggable: true,
-        });
-        
-        const pyramidImage = new Konva.Image({
-          x: 0,
-          y: 0,
-          image: img,
-          width: 100,
-          height: 100,
-        });
-        group.add(pyramidImage);
-        
-        layer.add(group);
-        addSelectionEvents(group);
-        selectedShapes = [group];
-        tr.nodes([group]);
-        showProperties([group]);
         layer.batchDraw();
-      };
-      img.onerror = () => {
-        console.error("Errore nel caricamento di piramide.png. Verifica il percorso.");
-      };
+      });
+
+      stage.on('mouseup', () => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        
+        if (currentShape) {
+          selectedShapes = [currentShape];
+          tr.nodes([currentShape]);
+          showProperties([currentShape]);
+          layer.batchDraw();
+        }
+        currentShape = null;
+      });
     }
 
     // Aggiungi simbolo radice quadrata con immagine
@@ -1104,50 +1173,82 @@
       resetMode();
       currentMode = 'square-root';
       document.getElementById('shapes-btn').classList.add('active');
+      document.getElementById('canvas-container').classList.add('shape-draw-cursor');
+      disableStageDragging();
 
       const img = new Image();
       img.src = 'radice2.png';
-      img.onload = () => {
-        const pos = stage.getPointerPosition() || { x: 100, y: 100 };
+      
+      stage.on('mousedown', (e) => {
+        if (e.target !== stage) return;
+        isDrawing = true;
+        const pos = stage.getRelativePointerPosition();
+        startPos = pos;
+
+        img.onload = () => {
+          const group = new Konva.Group({
+            x: pos.x,
+            y: pos.y,
+            draggable: true,
+          });
+          
+          const sqrtImage = new Konva.Image({
+            x: 0,
+            y: 0,
+            image: img,
+            width: 50,
+            height: 50,
+          });
+          group.add(sqrtImage);
+          
+          const sqrtText = new Konva.Text({
+            x: 40,
+            y: 25,
+            text: 'x',
+            fontSize: 20,
+            fontFamily: 'Arial',
+            fill: '#000000',
+            draggable: false,
+          });
+          group.add(sqrtText);
+          
+          layer.add(group);
+          currentShape = group;
+          addSelectionEvents(group);
+          setupTextEditing(group, sqrtText);
+          layer.batchDraw();
+        };
+      });
+
+      stage.on('mousemove', () => {
+        if (!isDrawing || !currentShape) return;
+        const pos = stage.getRelativePointerPosition();
+        const dx = pos.x - startPos.x;
+        const dy = pos.y - startPos.y;
+
+        // Ridimensiona la radice mentre la tracci
+        const size = Math.max(Math.abs(dx), Math.abs(dy));
+        currentShape.findOne('Image').width(size);
+        currentShape.findOne('Image').height(size);
+        currentShape.findOne('Text').x(size * 0.8);
+        currentShape.findOne('Text').y(size * 0.5);
+        currentShape.findOne('Text').fontSize(size * 0.4);
         
-        const group = new Konva.Group({
-          x: pos.x,
-          y: pos.y,
-          draggable: true,
-        });
-        
-        // Aggiungi l'immagine della radice (ora correttamente orientata)
-        const sqrtImage = new Konva.Image({
-          x: 0,
-          y: 0,
-          image: img,
-          width: 50,
-          height: 50,
-        });
-        group.add(sqrtImage);
-        
-        // Aggiungi testo sotto la radice
-        const sqrtText = new Konva.Text({
-          x: 40, // Spostato a destra del simbolo √
-          y: 25,
-          text: ' ',
-          fontSize: 20,
-          fontFamily: 'Arial',
-          fill: '#000000',
-        });
-        group.add(sqrtText);
-        
-        layer.add(group);
-        addSelectionEvents(group);
-        setupTextEditing(group, sqrtText);
-        selectedShapes = [group];
-        tr.nodes([group]);
-        showProperties([group]);
         layer.batchDraw();
-      };
-      img.onerror = () => {
-        console.error("Errore nel caricamento di radice2.png");
-      };
+      });
+
+      stage.on('mouseup', () => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        
+        if (currentShape) {
+          selectedShapes = [currentShape];
+          tr.nodes([currentShape]);
+          showProperties([currentShape]);
+          layer.batchDraw();
+        }
+        currentShape = null;
+      });
     }
 
     // Aggiungi testo
@@ -1181,7 +1282,7 @@
       });
     }
 
-    // Gestione modifica testo
+    // Gestione modifica testo con pallini visibili
     function setupTextEditing(textNode, customTextNode = null) {
       const targetNode = customTextNode || textNode;
       
@@ -1191,6 +1292,16 @@
         if (existingTextarea) {
           document.body.removeChild(existingTextarea);
         }
+
+        // Mantieni i pallini di selezione visibili
+        if (targetNode.getParent() instanceof Konva.Group) {
+          selectedShapes = [targetNode.getParent()];
+          tr.nodes([targetNode.getParent()]);
+        } else {
+          selectedShapes = [targetNode];
+          tr.nodes([targetNode]);
+        }
+        showProperties(selectedShapes);
 
         const absPos = targetNode.getAbsolutePosition();
         const stageBox = stage.container().getBoundingClientRect();
@@ -1426,8 +1537,8 @@
       if (allImages) {
         strokeColorGroup.classList.add('hidden');
         strokeWidthGroup.classList.add('hidden');
-        textColorGroup.classList.add('hidden');
-        fontSizeGroup.classList.add('hidden');
+        textColorGroup.classList.remove('hidden');
+        fontSizeGroup.classList.remove('hidden');
       } else if (allText) {
         strokeColorGroup.classList.add('hidden');
         strokeWidthGroup.classList.add('hidden');
@@ -1470,20 +1581,24 @@
         }
       };
       document.getElementById('textColor').onchange = () => {
-        if (allText) {
+        if (allText || allImages) {
           shapes.forEach(shape => {
-            shape.fill(document.getElementById('textColor').value);
+            if (shape instanceof Konva.Text) {
+              shape.fill(document.getElementById('textColor').value);
+            }
           });
           layer.batchDraw();
         }
       };
       document.getElementById('fontSize').onchange = () => {
-        if (allText) {
+        if (allText || allImages) {
           const newFontSize = parseInt(document.getElementById('fontSize').value);
           if (newFontSize > 0) {
             shapes.forEach(shape => {
-              shape.fontSize(newFontSize);
-              shape.originalFontSize = newFontSize;
+              if (shape instanceof Konva.Text) {
+                shape.fontSize(newFontSize);
+                shape.originalFontSize = newFontSize;
+              }
             });
             layer.batchDraw();
           }
