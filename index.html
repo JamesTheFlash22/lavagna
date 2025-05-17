@@ -453,6 +453,7 @@
     let selectionRect = null;
     let isSelecting = false;
     let currentTextNode = null;
+    let activeTextNode = null;
 
     // Parametri per lo zoom
     const MIN_SCALE = 0.2;
@@ -563,7 +564,9 @@
         selectionRect.destroy();
         selectionRect = null;
       }
-      document.getElementById('properties').style.display = 'none';
+      if (!activeTextNode) {
+        document.getElementById('properties').style.display = 'none';
+      }
       const existingTextarea = document.querySelector('.custom-textbox');
       if (existingTextarea) {
         document.body.removeChild(existingTextarea);
@@ -1029,16 +1032,28 @@
       const img = new Image();
       img.src = 'cubo.png';
       img.onload = () => {
+        const pos = stage.getPointerPosition() || { x: 100, y: 100 };
+        
+        const group = new Konva.Group({
+          x: pos.x,
+          y: pos.y,
+          draggable: true,
+        });
+        
         const cubeImage = new Konva.Image({
-          x: 100,
-          y: 100,
+          x: 0,
+          y: 0,
           image: img,
           width: 100,
           height: 100,
-          draggable: true,
         });
-        layer.add(cubeImage);
-        addSelectionEvents(cubeImage);
+        group.add(cubeImage);
+        
+        layer.add(group);
+        addSelectionEvents(group);
+        selectedShapes = [group];
+        tr.nodes([group]);
+        showProperties([group]);
         layer.batchDraw();
       };
       img.onerror = () => {
@@ -1055,16 +1070,28 @@
       const img = new Image();
       img.src = 'piramide.png';
       img.onload = () => {
+        const pos = stage.getPointerPosition() || { x: 100, y: 100 };
+        
+        const group = new Konva.Group({
+          x: pos.x,
+          y: pos.y,
+          draggable: true,
+        });
+        
         const pyramidImage = new Konva.Image({
-          x: 100,
-          y: 100,
+          x: 0,
+          y: 0,
           image: img,
           width: 100,
           height: 100,
-          draggable: true,
         });
-        layer.add(pyramidImage);
-        addSelectionEvents(pyramidImage);
+        group.add(pyramidImage);
+        
+        layer.add(group);
+        addSelectionEvents(group);
+        selectedShapes = [group];
+        tr.nodes([group]);
+        showProperties([group]);
         layer.batchDraw();
       };
       img.onerror = () => {
@@ -1079,16 +1106,17 @@
       document.getElementById('shapes-btn').classList.add('active');
 
       const img = new Image();
-      img.src = 'radice.png';
+      img.src = 'radice2.png';
       img.onload = () => {
-        const pos = { x: 100, y: 100 };
+        const pos = stage.getPointerPosition() || { x: 100, y: 100 };
+        
         const group = new Konva.Group({
           x: pos.x,
           y: pos.y,
           draggable: true,
         });
         
-        // Aggiungi l'immagine della radice
+        // Aggiungi l'immagine della radice (ora correttamente orientata)
         const sqrtImage = new Konva.Image({
           x: 0,
           y: 0,
@@ -1112,10 +1140,13 @@
         layer.add(group);
         addSelectionEvents(group);
         setupTextEditing(group, sqrtText);
+        selectedShapes = [group];
+        tr.nodes([group]);
+        showProperties([group]);
         layer.batchDraw();
       };
       img.onerror = () => {
-        console.error("Errore nel caricamento di radice.png");
+        console.error("Errore nel caricamento di radice2.png");
       };
     }
 
@@ -1143,20 +1174,25 @@
         layer.add(textNode);
         addSelectionEvents(textNode);
         setupTextEditing(textNode);
+        selectedShapes = [textNode];
+        tr.nodes([textNode]);
+        showProperties([textNode]);
         layer.batchDraw();
-        resetMode();
       });
     }
 
     // Gestione modifica testo
-    function setupTextEditing(textNode) {
-      textNode.on('dblclick', () => {
+    function setupTextEditing(textNode, customTextNode = null) {
+      const targetNode = customTextNode || textNode;
+      
+      targetNode.on('dblclick', () => {
+        activeTextNode = targetNode;
         const existingTextarea = document.querySelector('.custom-textbox');
         if (existingTextarea) {
           document.body.removeChild(existingTextarea);
         }
 
-        const absPos = textNode.getAbsolutePosition();
+        const absPos = targetNode.getAbsolutePosition();
         const stageBox = stage.container().getBoundingClientRect();
         const areaPosition = {
           x: stageBox.left + absPos.x,
@@ -1166,50 +1202,53 @@
         const textarea = document.createElement('textarea');
         textarea.className = 'custom-textbox';
         document.body.appendChild(textarea);
-        textarea.value = textNode.text();
+        textarea.value = targetNode.text();
         textarea.style.top = `${areaPosition.y}px`;
         textarea.style.left = `${areaPosition.x}px`;
-        textarea.style.width = `${textNode.width() * stage.scaleX()}px`;
+        textarea.style.width = `${targetNode.width() * stage.scaleX()}px`;
         textarea.style.height = 'auto';
-        textarea.style.fontSize = `${textNode.fontSize() * stage.scaleX()}px`;
-        textarea.style.fontFamily = textNode.fontFamily();
-        textarea.style.color = textNode.fill();
+        textarea.style.fontSize = `${targetNode.fontSize() * stage.scaleX()}px`;
+        textarea.style.fontFamily = targetNode.fontFamily();
+        textarea.style.color = targetNode.fill();
         textarea.style.lineHeight = 'normal';
         textarea.focus();
 
-        textNode.opacity(0);
+        targetNode.opacity(0);
         layer.batchDraw();
 
         textarea.addEventListener('input', () => {
-          textNode.text(textarea.value);
+          targetNode.text(textarea.value);
           layer.batchDraw();
         });
 
         textarea.addEventListener('blur', () => {
-          textNode.text(textarea.value);
-          textNode.opacity(1);
+          targetNode.text(textarea.value);
+          targetNode.opacity(1);
           layer.batchDraw();
           document.body.removeChild(textarea);
+          activeTextNode = null;
         });
 
         textarea.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            textNode.text(textarea.value);
-            textNode.opacity(1);
+            targetNode.text(textarea.value);
+            targetNode.opacity(1);
             layer.batchDraw();
             document.body.removeChild(textarea);
+            activeTextNode = null;
           } else if (e.key === 'Escape') {
             e.preventDefault();
-            textNode.opacity(1);
+            targetNode.opacity(1);
             document.body.removeChild(textarea);
+            activeTextNode = null;
           }
         });
       });
 
-      textNode.on('contextmenu', (e) => {
+      targetNode.on('contextmenu', (e) => {
         e.evt.preventDefault();
-        currentTextNode = textNode;
+        currentTextNode = targetNode;
         const contextMenu = document.getElementById('text-context-menu');
         contextMenu.style.display = 'block';
         contextMenu.style.left = `${e.evt.clientX}px`;
@@ -1264,16 +1303,28 @@
           const img = new Image();
           img.src = url;
           img.onload = () => {
+            const pos = stage.getPointerPosition() || { x: 100, y: 100 };
+            
+            const group = new Konva.Group({
+              x: pos.x,
+              y: pos.y,
+              draggable: true,
+            });
+            
             const imageNode = new Konva.Image({
-              x: 100,
-              y: 100,
+              x: 0,
+              y: 0,
               image: img,
               width: img.width / 2,
               height: img.height / 2,
-              draggable: true,
             });
-            layer.add(imageNode);
-            addSelectionEvents(imageNode);
+            group.add(imageNode);
+            
+            layer.add(group);
+            addSelectionEvents(group);
+            selectedShapes = [group];
+            tr.nodes([group]);
+            showProperties([group]);
             layer.batchDraw();
             resetMode();
           };
