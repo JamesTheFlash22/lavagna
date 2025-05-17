@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lavagna Digitale</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+      background: #f3f4f6;
+    }
+    #sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 200px;
+      height: 100%;
+      background: linear-gradient(to bottom, #1f2937, #111827);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem 0;
+      z-index: 20;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+      overflow-y: auto;
+    }
+    #sidebar button {
+      width: 50px;
+      height: 50px;
+      margin: 0.5rem 0;
+      background: #374151;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    #sidebar button:hover {
+      background: #4b5563;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    #sidebar button.active {
+      background: #10b981;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.5), 0 2px 4px rgba(0, 0, 0, 0.2);
+      transform: translateY(-2px);
+    }
+    #sidebar .tooltip {
+      visibility: hidden;
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #111827;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.25rem;
+      white-space: nowrap;
+      z-index: 30;
+      opacity: 0;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    #sidebar button:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+    #sidebar hr {
+      width: 80%;
+      border-color: #4b5563;
+      margin: 0.75rem 0;
+    }
+    #sidebar h3 {
+      color: #9ca3af;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      margin: 0.5rem 0;
+    }
+    #shapes-dropdown {
+      position: relative;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #shapes-menu {
+      display: none;
+      background: #374151;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      z-index: 30;
+      width: 180px;
+      margin-top: 0.5rem;
+    }
+    #shapes-menu button {
+      width: 100%;
+      padding: 0.5rem;
+      text-align: left;
+      background: none;
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 14px;
+    }
+    #shapes-menu button:hover {
+      background: #4b5563;
+    }
+    #shapes-menu img {
+      width: 16px;
+      height: 16px;
+    }
+    #properties {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 250px;
+      height: 100%;
+      background: #ffffff;
+      border-left: 1px solid #e5e7eb;
+      padding: 1.5rem;
+      display: none;
+      z-index: 20;
+      box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    }
+    #properties h3 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: #1f2937;
+    }
+    #properties label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #4b5563;
+    }
+    #properties input, #properties select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.25rem;
+      margin-bottom: 1rem;
+    }
+    #properties .hidden {
+      display: none;
+    }
+    #properties button {
+      padding: 0.5rem;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      width: 100%;
+    }
+    #properties button:hover {
+      background: #059669;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      cursor: default;
+    }
+    .draw-cursor {
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="black" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z"/></svg>') 0 24, auto;
+    }
+    .erase-cursor {
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="black" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>') 12 12, auto;
+    }
+    .line-cursor {
+      cursor: crosshair;
+    }
+    .move-cursor {
+      cursor: move;
+    }
+    .shape-draw-cursor {
+      cursor: crosshair;
+    }
+    .select-cursor {
+      cursor: pointer;
+    }
+    #context-menu {
+      position: absolute;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      z-index: 30;
+      display: none;
+      border-radius: 0.25rem;
+    }
+    #context-menu button {
+      display: block;
+      width: 100%;
+      padding: 0.5rem 1rem;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #1f2937;
+    }
+    #context-menu button:hover {
+      background: #f3f4f6;
+    }
+    .custom-textbox {
+      position: absolute;
+      border: none;
+      padding: 0;
+      background: transparent;
+      outline: none;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+      resize: none;
+      z-index: 1000;
+    }
+    #zoom-indicator {
+      position: fixed;
+      top: 10px;
+      left: 210px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 30;
+    }
+    #select-btn img {
+      width: 24px;
+      height: 24px;
+    }
+    #notification {
+      position: fixed;
+      top: 50px;
+      left: 210px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 14px;
+      z-index: 40;
+      display: none;
+    }
+  </style>
+  <script src="https://unpkg.com/konva@8.4.3/konva.min.js"></script>
+  <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div id="sidebar" role="toolbar" aria-label="Barra degli strumenti">
+    <h3>Strumenti</h3>
+    <button id="select-btn" onclick="startSelection()" aria-label="Seleziona">
+      <img src="cursore.png" alt="Seleziona Icona">
+      <span class="tooltip">Seleziona</span>
+    </button>
+    <hr>
+    <h3>Zoom</h3>
+    <button onclick="zoomIn()" aria-label="Zoom In">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      <span class="tooltip">Zoom In</span>
+    </button>
+    <button onclick="zoomOut()" aria-label="Zoom Out">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12h16" />
+      </svg>
+      <span class="tooltip">Zoom Out</span>
+    </button>
+    <button onclick="resetZoom()" aria-label="Reset Zoom">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4 -4h8" />
+      </svg>
+      <span class="tooltip">Reset Zoom</span>
+    </button>
+    <hr>
+    <h3>Disegno</h3>
+    <button id="draw-btn" onclick="startDrawing()" aria-label="Penna">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+      </svg>
+      <span class="tooltip">Penna</span>
+    </button>
+    <button id="erase-btn" onclick="startErasing()" aria-label="Gomma">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span class="tooltip">Gomma</span>
+    </button>
+    <button id="line-btn" onclick="startLine()" aria-label="Linea">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5l14 14" />
+      </svg>
+      <span class="tooltip">Linea</span>
+    </button>
+    <hr>
+    <h3>Forme</h3>
+    <div id="shapes-dropdown">
+      <button id="shapes-btn" aria-label="Forme">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+        </svg>
+        <span class="tooltip">Forme</span>
+      </button>
+      <div id="shapes-menu">
+        <button onclick="drawRectangle()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h18v18H3V3z" /></svg> Rettangolo</button>
+        <button onclick="drawSquare()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h18v18H3V3z" /></svg> Quadrato</button>
+        <button onclick="drawCircle()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /></svg> Cerchio</button>
+        <button onclick="drawTriangle()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21L12 3l9 18H3z" /></svg> Triangolo</button>
+        <button onclick="addCube()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h18v18H3V3z" /></svg> Cubo</button>
+        <button onclick="addPyramid()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2L2 22h20L12 2z" /></svg> Piramide</button>
+        <button onclick="addSquareRoot()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h3l3-9 6 18h3" /></svg> Radice Quadrata</button>
+      </div>
+    </div>
+    <hr>
+    <h3>Testo</h3>
+    <button id="text-btn" onclick="startText()" aria-label="Testo">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      <span class="tooltip">Testo</span>
+    </button>
+    <hr>
+    <h3>Immagini</h3>
+    <button id="paste-image-btn" onclick="startPasteImage()" aria-label="Incolla Immagine">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+      <span class="tooltip">Incolla Immagine</span>
+    </button>
+    <hr>
+    <h3>Esportazione</h3>
+    <button onclick="exportToPNG()" aria-label="Esporta PNG">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      <span class="tooltip">Esporta PNG</span>
+    </button>
+    <button onclick="exportToPDF()" aria-label="Esporta PDF">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <span class="tooltip">Esporta PDF</span>
+    </button>
+  </div>
+  <!-- Pannello Proprietà -->
+  <div id="properties" role="region" aria-label="Pannello delle proprietà">
+    <h3>Proprietà</h3>
+    <div id="strokeColorGroup">
+      <label>Colore bordo</label>
+      <input type="color" id="strokeColor" value="#000000">
+    </div>
+    <div id="strokeWidthGroup">
+      <label>Spessore bordo</label>
+      <input type="number" id="strokeWidth" value="2" min="1" max="20">
+    </div>
+    <div id="textColorGroup">
+      <label>Colore testo</label>
+      <input type="color" id="textColor" value="#000000">
+    </div>
+    <div id="fontSizeGroup">
+      <label>Dimensione font</label>
+      <input type="number" id="fontSize" value="20" min="1">
+    </div>
+    <div id="superscriptGroup" class="hidden">
+      <button id="superscriptBtn">Converti 2 in Apice (²)</button>
+    </div>
+  </div>
+  <!-- Menu contestuale -->
+  <div id="context-menu">
+    <button onclick="copyObjects()">Copia</button>
+    <button onclick="pasteObjects()">Incolla</button>
+    <button onclick="duplicateObjects()">Duplica</button>
+    <button onclick="cutObjects()">Taglia</button>
+    <button onclick="deleteObjects()">Elimina</button>
+  </div>
+  <!-- Indicatore Zoom -->
+  <div id="zoom-indicator">Zoom: 100%</div>
+  <!-- Notifica -->
+  <div id="notification"></div>
+  <!-- Canvas -->
+  <div id="canvas-container"></div>
+
+  <script>
+    // Inizializzazione Konva.js
+    const stage = new Konva.Stage({
+      container: 'canvas-container',
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+    const layer = new Konva.Layer();
+    stage.add(layer);
+
+    // Aggiungi il Transformer per il ridimensionamento
+    const tr = new Konva.Transformer({
+      borderStroke: '#10b981',
+      anchorStroke: '#10b981',
+      anchorFill: '#ffffff',
+      anchorSize: 10,
+      anchorCornerRadius: 5,
+    });
+    layer.add(tr);
+
+    let currentMode = null;
+    let currentShape = null;
+    let currentLine = null;
+    let selectedShapes = [];
+    let isDrawing = false;
+    let isErasing = false;
+    let isDraggingStage = false;
+    let clipboard = [];
+    let startPos = null;
+    let selectionRect = null;
+    let isSelecting = false;
+
+    // Parametri per lo zoom
+    const MIN_SCALE = 0.2;
+    const MAX_SCALE = 5;
+    const SCALE_BY = 1.1;
+    let zoomLevel = 1;
+
+    // Funzione per mostrare notifiche
+    function showNotification(message, duration = 2000) {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.style.display = 'block';
+      setTimeout(() => {
+        notification.style.display = 'none';
+      }, duration);
+    }
+
+    // Aggiorna l'indicatore di zoom
+    function updateZoomIndicator() {
+      const zoomPercentage = Math.round(zoomLevel * 100);
+      document.getElementById('zoom-indicator').textContent = `Zoom: ${zoomPercentage}%`;
+    }
+
+    // Funzioni per lo zoom avanzato
+    function zoomIn() {
+      const oldScale = stage.scaleX();
+      const newScale = Math.min(oldScale * SCALE_BY, MAX_SCALE);
+      zoomLevel = newScale;
+
+      const center = {
+        x: stage.width() / 2,
+        y: stage.height() / 2,
+      };
+      const mousePointTo = {
+        x: (center.x - stage.x()) / oldScale,
+        y: (center.y - stage.y()) / oldScale,
+      };
+
+      stage.scale({ x: newScale, y: newScale });
+      const newPos = {
+        x: center.x - mousePointTo.x * newScale,
+        y: center.y - mousePointTo.y * newScale,
+      };
+      stage.position(newPos);
+      updateZoomIndicator();
+      stage.batchDraw();
+    }
+
+    function zoomOut() {
+      const oldScale = stage.scaleX();
+      const newScale = Math.max(oldScale / SCALE_BY, MIN_SCALE);
+      zoomLevel = newScale;
+
+      const center = {
+        x: stage.width() / 2,
+        y: stage.height() / 2,
+      };
+      const mousePointTo = {
+        x: (center.x - stage.x()) / oldScale,
+        y: (center.y - stage.y()) / oldScale,
+      };
+
+      stage.scale({ x: newScale, y: newScale });
+      const newPos = {
+        x: center.x - mousePointTo.x * newScale,
+        y: center.y - mousePointTo.y * newScale,
+      };
+      stage.position(newPos);
+      updateZoomIndicator();
+      stage.batchDraw();
+    }
+
+    function resetZoom() {
+      zoomLevel = 1;
+      stage.scale({ x: 1, y: 1 });
+      stage.position({ x: 0, y: 0 });
+      updateZoomIndicator();
+      stage.batchDraw();
+    }
+
+    // Gestione dropdown forme
+    const shapesBtn = document.getElementById('shapes-btn');
+    const shapesMenu = document.getElementById('shapes-menu');
+    shapesBtn.addEventListener('click', () => {
+      shapesMenu.style.display = shapesMenu.style.display === 'block' ? 'none' : 'block';
+    });
+    document.addEventListener('click', (e) => {
+      if (!shapesBtn.contains(e.target) && !shapesMenu.contains(e.target)) {
+        shapesMenu.style.display = 'none';
+      }
+    });
+
+    // Resetta modalità e eventi
+    function resetMode() {
+      currentMode = null;
+      isDrawing = false;
+      isErasing = false;
+      isSelecting = false;
+      stage.off('mousedown mousemove mouseup click contextmenu');
+      document.getElementById('canvas-container').classList.remove('draw-cursor', 'erase-cursor', 'line-cursor', 'move-cursor', 'shape-draw-cursor', 'select-cursor');
+      document.querySelectorAll('#sidebar button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('context-menu').style.display = 'none';
+      shapesMenu.style.display = 'none';
+      tr.nodes([]);
+      selectedShapes = [];
+      if (selectionRect) {
+        selectionRect.destroy();
+        selectionRect = null;
+      }
+      document.getElementById('properties').style.display = 'none';
+      const existingTextarea = document.querySelector('.custom-textbox');
+      if (existingTextarea) {
+        document.body.removeChild(existingTextarea);
+      }
+      enableStageDragging();
+      layer.batchDraw();
+    }
+
+    // Abilita trascinamento della lavagna
+    function enableStageDragging() {
+      stage.draggable(true);
+      document.getElementById('canvas-container').classList.add('move-cursor');
+      stage.on('mousedown', (e) => {
+        if (e.target === stage && currentMode !== 'draw' && currentMode !== 'erase' && currentMode !== 'line' && !currentMode?.startsWith('draw-') && currentMode !== 'select') {
+          isDraggingStage = true;
+        }
+      });
+      stage.on('mouseup', () => {
+        isDraggingStage = false;
+      });
+    }
+
+    // Disabilita trascinamento della lavagna
+    function disableStageDragging() {
+      stage.draggable(false);
+      document.getElementById('canvas-container').classList.remove('move-cursor');
+    }
+
+    // Zoom con rotellina migliorato
+    stage.on('wheel', (e) => {
+      e.evt.preventDefault();
+      const oldScale = stage.scaleX();
+      const pointer = stage.getPointerPosition();
+      const mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
+      };
+      const newScale = e.evt.deltaY > 0 ? Math.max(oldScale / SCALE_BY, MIN_SCALE) : Math.min(oldScale * SCALE_BY, MAX_SCALE);
+      zoomLevel = newScale;
+      stage.scale({ x: newScale, y: newScale });
+      const newPos = {
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
+      };
+      stage.position(newPos);
+      updateZoomIndicator();
+      stage.batchDraw();
+    });
+
+    // Modalità selezione
+    function startSelection() {
+      resetMode();
+      currentMode = 'select';
+      document.getElementById('select-btn').classList.add('active');
+      document.getElementById('canvas-container').classList.add('select-cursor');
+      disableStageDragging();
+
+      // Listener per i comandi da tastiera
+      const handleKeyDown = (e) => {
+        if (currentMode !== 'select') return;
+        e.preventDefault();
+
+        if (e.ctrlKey && e.key === 'a') {
+          console.log("Ctrl+A premuto in modalità selezione");
+          const shapes = layer.getChildren(node => {
+            if (node === tr || node === selectionRect) {
+              console.log("Escluso dalla selezione:", node.getClassName());
+              return false;
+            }
+            const isVisible = node.visible();
+            const isLocked = node.draggable() === false;
+            if (!isVisible || isLocked) {
+              console.log(`Oggetto escluso (non visibile o bloccato): ${node.getClassName()} ID: ${node.id()}`);
+              return false;
+            }
+            console.log(`Oggetto considerato per la selezione: ${node.getClassName()} ID: ${node.id()}`);
+            return true;
+          });
+
+          console.log("Totale oggetti trovati:", shapes.length);
+          selectedShapes = shapes;
+
+          if (selectedShapes.length > 0) {
+            console.log("Oggetti selezionati con Ctrl+A:", selectedShapes.map(s => s.getClassName()));
+            tr.nodes(selectedShapes);
+            showProperties(selectedShapes);
+            showNotification(`Selezionati ${selectedShapes.length} oggetti`);
+          } else {
+            console.log("Nessun oggetto selezionabile trovato");
+            tr.nodes([]);
+            document.getElementById('properties').style.display = 'none';
+            showNotification("Nessun oggetto selezionabile trovato");
+          }
+          layer.batchDraw();
+        }
+
+        if (e.key === 'Escape') {
+          console.log("Esc premuto, deselezione degli oggetti");
+          selectedShapes = [];
+          tr.nodes([]);
+          document.getElementById('properties').style.display = 'none';
+          showNotification("Selezione annullata");
+          layer.batchDraw();
+        }
+
+        if (e.ctrlKey && e.key === 'c' && selectedShapes.length > 0) {
+          console.log("Ctrl+C premuto, copia degli oggetti");
+          copyObjects();
+        }
+
+        if (e.ctrlKey && e.key === 'v') {
+          console.log("Ctrl+V premuto, incolla oggetti");
+          pasteObjects();
+        }
+
+        if (e.ctrlKey && e.key === 'x' && selectedShapes.length > 0) {
+          console.log("Ctrl+X premuto, taglia oggetti");
+          cutObjects();
+        }
+
+        if (e.key === 'Delete' && selectedShapes.length > 0) {
+          console.log("Delete premuto, elimina oggetti");
+          deleteObjects();
+        }
+      };
+      document.addEventListener('keydown', handleKeyDown);
+
+      stage.on('mousedown', (e) => {
+        if (e.target !== stage) return;
+        isSelecting = true;
+        const pos = stage.getRelativePointerPosition();
+        startPos = pos;
+
+        selectionRect = new Konva.Rect({
+          x: pos.x,
+          y: pos.y,
+          width: 0,
+          height: 0,
+          stroke: '#10b981',
+          strokeWidth: 2,
+          dash: [5, 5],
+          fill: 'rgba(16, 185, 129, 0.1)',
+        });
+        layer.add(selectionRect);
+        layer.batchDraw();
+      });
+
+      stage.on('mousemove', () => {
+        if (!isSelecting) return;
+        const pos = stage.getRelativePointerPosition();
+        const dx = pos.x - startPos.x;
+        const dy = pos.y - startPos.y;
+
+        selectionRect.x(Math.min(startPos.x, pos.x));
+        selectionRect.y(Math.min(startPos.y, pos.y));
+        selectionRect.width(Math.abs(dx));
+        selectionRect.height(Math.abs(dy));
+        layer.batchDraw();
+      });
+
+      stage.on('mouseup', () => {
+        if (!isSelecting) return;
+        isSelecting = false;
+
+        const selectionBox = selectionRect.getClientRect();
+        const shapes = layer.getChildren(node => {
+          if (node === selectionRect || node === tr) return false;
+          const isVisible = node.visible();
+          const isLocked = node.draggable() === false;
+          return isVisible && !isLocked;
+        });
+
+        selectedShapes = [];
+        shapes.forEach(shape => {
+          const shapeBox = shape.getClientRect();
+          const intersects = !(
+            shapeBox.x + shapeBox.width < selectionBox.x ||
+            shapeBox.x > selectionBox.x + selectionBox.width ||
+            shapeBox.y + shapeBox.height < selectionBox.y ||
+            shapeBox.y > selectionBox.y + selectionBox.height
+          );
+          if (intersects) {
+            selectedShapes.push(shape);
+          }
+        });
+
+        selectionRect.destroy();
+        selectionRect = null;
+
+        if (selectedShapes.length > 0) {
+          tr.nodes(selectedShapes);
+          showProperties(selectedShapes);
+          showNotification(`Selezionati ${selectedShapes.length} oggetti con rettangolo`);
+          console.log("Oggetti selezionati con rettangolo:", selectedShapes.length);
+        } else {
+          tr.nodes([]);
+          document.getElementById('properties').style.display = 'none';
+          showNotification("Nessun oggetto selezionato con rettangolo");
+          console.log("Nessun oggetto selezionato con rettangolo");
+        }
+        layer.batchDraw();
+      });
+
+      stage.on('click', (e) => {
+        if (e.target !== stage || isSelecting) return;
+        selectedShapes = [];
+        tr.nodes([]);
+        document.getElementById('properties').style.display = 'none';
+        showNotification("Selezione annullata");
+        layer.batchDraw();
+      });
+
+      stage.on('contextmenu', (e) => {
+        if (currentMode !== 'select' || selectedShapes.length === 0) return;
+        e.evt.preventDefault();
+        const contextMenu = document.getElementById('context-menu');
+        contextMenu.style.display = 'block';
+        contextMenu.style.left = `${e.evt.clientX}px`;
+        contextMenu.style.top = `${e.evt.clientY}px`;
+      });
+
+      stage.on('resetMode', () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      });
+    }
+
+    // Funzione per aggiungere eventi di selezione e ridimensionamento a una forma
+    function addSelectionEvents(shape) {
+      shape.draggable(true);
+      shape.on('dragend transformend', () => {
+        layer.batchDraw();
+      });
+
+      if (shape instanceof Konva.Text) {
+        shape.originalFontSize = shape.fontSize();
+        shape.on('transform', () => {
+          const scaleX = shape.scaleX();
+          const newFontSize = shape.originalFontSize * scaleX;
+          shape.fontSize(newFontSize);
+          shape.scaleX(1);
+          shape.scaleY(1);
+          document.getElementById('fontSize').value = Math.round(newFontSize);
+          layer.batchDraw();
+        });
+      }
+    }
+
+    // Disegno a mano libera
+    function startDrawing() {
+      resetMode();
+      currentMode = 'draw';
+      document.getElementById('draw-btn').classList.add('active');
+      document.getElementById('canvas-container').classList.add('draw-cursor');
+      disableStageDragging();
+      stage.on('mousedown', (e) => {
+        if (e.target !== stage) return;
+        isDrawing = true;
+        const pos = stage.getRelativePointerPosition();
+        currentLine = new Konva.Line({
+          stroke: document.getElementById('strokeColor').value,
+          strokeWidth: parseInt(document.getElementById('strokeWidth').value),
+          points: [pos.x, pos.y],
+          lineCap: 'round',
+          lineJoin: 'round',
+          draggable: true,
+        });
+        layer.add(currentLine);
+        addSelectionEvents(currentLine);
+        layer.batchDraw();
+      });
+      stage.on('mousemove', () => {
+        if (!isDrawing) return;
+        const pos = stage.getRelativePointerPosition();
+        const newPoints = currentLine.points().concat([pos.x, pos.y]);
+        currentLine.points(newPoints);
+        layer.batchDraw();
+      });
+      stage.on('mouseup', () => {
+        isDrawing = false;
+        currentLine = null;
+      });
+    }
+
+    // Gomma
+    function startErasing() {
+      resetMode();
+      currentMode = 'erase';
+      document.getElementById('erase-btn').classList.add('active');
+      document.getElementById('canvas-container').classList.add('erase-cursor');
+      disableStageDragging();
+      stage.on('mousedown', (e) => {
+        isErasing = true;
+      });
+      stage.on('mousemove', () => {
+        if (!isErasing) return;
+        const pos = stage.getRelativePointerPosition();
+        const shapes = stage.find(node => {
+          if (node === stage || node === layer) return false;
+          const boundingBox = node.getClientRect();
+          const eraseRadius = parseInt(document.getElementById('strokeWidth').value) * 2;
+          return (
+            pos.x >= boundingBox.x - eraseRadius &&
+            pos.x <= boundingBox.x + boundingBox.width + eraseRadius &&
+            pos.y >= boundingBox.y - eraseRadius &&
+            pos.y <= boundingBox.y + boundingBox.height + eraseRadius
+          );
+        });
+        shapes.forEach(shape => {
+          shape.destroy();
+        });
+        layer.batchDraw();
+      });
+      stage.on('mouseup', () => {
+        isErasing = false;
+      });
+    }
+
+    // Disegno linea
+    function startLine() {
+      resetMode();
+      currentMode = 'line';
+      document.getElementById('line-btn').classList.add('active');
+      document.getElementById('canvas-container').classList.add('line-cursor');
+      disableStageDragging();
+      stage.on('mousedown', (e) => {
+        if (e.target !== stage) return;
+        isDrawing = true;
+        const pos = stage.getRelativePointerPosition();
+        startPos = pos;
+        currentLine = new Konva.Line({
+          stroke: document.getElementById('strokeColor').value,
+          strokeWidth: parseInt(document.getElementById('strokeWidth').value),
+          points: [pos.x, pos.y, pos.x, pos.y],
+          lineCap: 'round',
+          lineJoin: 'round',
+          draggable: true,
+        });
+        layer.add(currentLine);
+        addSelectionEvents(currentLine);
+        layer.batchDraw();
+      });
+      stage.on('mousemove', () => {
+        if (!isDrawing) return;
+        const pos = stage.getRelativePointerPosition();
+        currentLine.points([startPos.x, startPos.y, pos.x, pos.y]);
+        layer.batchDraw();
+      });
+      stage.on('mouseup', () => {
+        isDrawing = false;
+        currentLine = null;
+      });
+    }
+
+    // Disegno dinamico delle forme
+    function setupShapeDrawing(shapeType) {
+      resetMode();
+      currentMode = `draw-${shapeType}`;
+      document.getElementById('shapes-btn').classList.add('active');
+      document.getElementById('canvas-container').classList.add('shape-draw-cursor');
+      disableStageDragging();
+
+      stage.on('mousedown', (e) => {
+        if (e.target !== stage) return;
+        isDrawing = true;
+        const pos = stage.getRelativePointerPosition();
+        startPos = pos;
+
+        if (shapeType === 'rect') {
+          currentShape = new Konva.Rect({
+            x: pos.x,
+            y: pos.y,
+            width: 0,
+            height: 0,
+            stroke: document.getElementById('strokeColor').value,
+            strokeWidth: parseInt(document.getElementById('strokeWidth').value),
+            fill: 'transparent',
+            draggable: true,
+          });
+        } else if (shapeType === 'square') {
+          currentShape = new Konva.Rect({
+            x: pos.x,
+            y: pos.y,
+            width: 0,
+            height: 0,
+            stroke: document.getElementById('strokeColor').value,
+            strokeWidth: parseInt(document.getElementById('strokeWidth').value),
+            fill: 'transparent',
+            draggable: true,
+          });
+        } else if (shapeType === 'circle') {
+          currentShape = new Konva.Circle({
+            x: pos.x,
+            y: pos.y,
+            radius: 0,
+            stroke: document.getElementById('strokeColor').value,
+            strokeWidth: parseInt(document.getElementById('strokeWidth').value),
+            fill: 'transparent',
+            draggable: true,
+          });
+        } else if (shapeType === 'triangle') {
+          currentShape = new Konva.Line({
+            points: [pos.x, pos.y, pos.x, pos.y, pos.x, pos.y, pos.x, pos.y],
+            stroke: document.getElementById('strokeColor').value,
+            strokeWidth: parseInt(document.getElementById('strokeWidth').value),
+            fill: 'transparent',
+            closed: true,
+            draggable: true,
+          });
+        }
+
+        layer.add(currentShape);
+        addSelectionEvents(currentShape);
+        layer.batchDraw();
+      });
+
+      stage.on('mousemove', () => {
+        if (!isDrawing) return;
+        const pos = stage.getRelativePointerPosition();
+        const dx = pos.x - startPos.x;
+        const dy = pos.y - startPos.y;
+
+        if (shapeType === 'rect') {
+          currentShape.x(Math.min(startPos.x, pos.x));
+          currentShape.y(Math.min(startPos.y, pos.y));
+          currentShape.width(Math.abs(dx));
+          currentShape.height(Math.abs(dy));
+        } else if (shapeType === 'square') {
+          const size = Math.max(Math.abs(dx), Math.abs(dy));
+          currentShape.x(Math.min(startPos.x, pos.x));
+          currentShape.y(Math.min(startPos.y, pos.y));
+          currentShape.width(size);
+          currentShape.height(size);
+        } else if (shapeType === 'circle') {
+          const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+          currentShape.x(startPos.x + dx / 2);
+          currentShape.y(startPos.y + dy / 2);
+          currentShape.radius(radius);
+        } else if (shapeType === 'triangle') {
+          const midX = startPos.x + dx / 2;
+          currentShape.points([midX, startPos.y, pos.x, pos.y, startPos.x, pos.y, midX, startPos.y]);
+        }
+
+        layer.batchDraw();
+      });
+
+      stage.on('mouseup', () => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        currentShape = null;
+        resetMode();
+      });
+    }
+
+    function drawRectangle() {
+      setupShapeDrawing('rect');
+    }
+
+    function drawSquare() {
+      setupShapeDrawing('square');
+    }
+
+    function drawCircle() {
+      setupShapeDrawing('circle');
+    }
+
+    function drawTriangle() {
+      setupShapeDrawing('triangle');
+    }
+
+    // Aggiungi cubo usando cubo.png
+    function addCube() {
+      resetMode();
+      currentMode = 'cube';
+      document.getElementById('shapes-btn').classList.add('active');
+
+      const img = new Image();
+      img.src = 'cubo.png';
+      img.onload = () => {
+        const cubeImage = new Konva.Image({
+          x: 100,
+          y: 100,
+          image: img,
+          width: 100,
+          height: 100,
+          draggable: true,
+        });
+        layer.add(cubeImage);
+        addSelectionEvents(cubeImage);
+        layer.batchDraw();
+      };
+      img.onerror = () => {
+        console.error("Errore nel caricamento di cubo.png. Verifica il percorso.");
+      };
+    }
+
+    // Aggiungi piramide usando piramide.png
+    function addPyramid() {
+      resetMode();
+      currentMode = 'pyramid';
+      document.getElementById('shapes-btn').classList.add('active');
+
+      const img = new Image();
+      img.src = 'piramide.png';
+      img.onload = () => {
+        const pyramidImage = new Konva.Image({
+          x: 100,
+          y: 100,
+          image: img,
+          width: 100,
+          height: 100,
+          draggable: true,
+        });
+        layer.add(pyramidImage);
+        addSelectionEvents(pyramidImage);
+        layer.batchDraw();
+      };
+      img.onerror = () => {
+        console.error("Errore nel caricamento di piramide.png. Verifica il percorso.");
+      };
+    }
+
+    // Aggiungi simbolo radice quadrata
+    function addSquareRoot() {
+      resetMode();
+      currentMode = 'square-root';
+      document.getElementById('shapes-btn').classList.add('active');
+
+      const pos = { x: 100, y: 100 }; // Posizione iniziale
+      const fontSizeInput = document.getElementById('fontSize');
+      const fontSize = parseInt(fontSizeInput.value) || 20;
+      const squareRootNode = new Konva.Text({
+        x: pos.x,
+        y: pos.y,
+        text: '√',
+        fontSize: fontSize,
+        fontFamily: 'Arial',
+        fill: document.getElementById('textColor').value,
+        draggable: true,
+        width: 200,
+        align: 'left',
+      });
+      layer.add(squareRootNode);
+      addSelectionEvents(squareRootNode);
+      setupTextEditing(squareRootNode);
+      layer.batchDraw();
+    }
+
+    // Aggiungi testo
+    function startText() {
+      resetMode();
+      currentMode = 'text';
+      document.getElementById('text-btn').classList.add('active');
+      stage.on('click', (e) => {
+        if (e.target !== stage) return;
+        const pos = stage.getRelativePointerPosition();
+        const fontSizeInput = document.getElementById('fontSize');
+        const fontSize = parseInt(fontSizeInput.value) || 20;
+        const textNode = new Konva.Text({
+          x: pos.x,
+          y: pos.y,
+          text: 'Inserisci testo',
+          fontSize: fontSize,
+          fontFamily: 'Arial',
+          fill: document.getElementById('textColor').value,
+          draggable: true,
+          width: 200,
+          align: 'left',
+        });
+        layer.add(textNode);
+        addSelectionEvents(textNode);
+        setupTextEditing(textNode);
+        layer.batchDraw();
+        resetMode();
+      });
+    }
+
+    // Gestione modifica testo
+    function setupTextEditing(textNode) {
+      textNode.on('dblclick', () => {
+        const existingTextarea = document.querySelector('.custom-textbox');
+        if (existingTextarea) {
+          document.body.removeChild(existingTextarea);
+        }
+
+        const absPos = textNode.getAbsolutePosition();
+        const stageBox = stage.container().getBoundingClientRect();
+        const areaPosition = {
+          x: stageBox.left + absPos.x,
+          y: stageBox.top + absPos.y,
+        };
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'custom-textbox';
+        document.body.appendChild(textarea);
+        textarea.value = textNode.text();
+        textarea.style.top = `${areaPosition.y}px`;
+        textarea.style.left = `${areaPosition.x}px`;
+        textarea.style.width = `${textNode.width() * stage.scaleX()}px`;
+        textarea.style.height = 'auto';
+        textarea.style.fontSize = `${textNode.fontSize() * stage.scaleX()}px`;
+        textarea.style.fontFamily = textNode.fontFamily();
+        textarea.style.color = textNode.fill();
+        textarea.style.lineHeight = 'normal';
+        textarea.focus();
+
+        textNode.opacity(0);
+        layer.batchDraw();
+
+        textarea.addEventListener('input', () => {
+          textNode.text(textarea.value);
+          layer.batchDraw();
+        });
+
+        textarea.addEventListener('blur', () => {
+          textNode.text(textarea.value);
+          textNode.opacity(1);
+          layer.batchDraw();
+          document.body.removeChild(textarea);
+        });
+
+        textarea.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            textNode.text(textarea.value);
+            textNode.opacity(1);
+            layer.batchDraw();
+            document.body.removeChild(textarea);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            textNode.opacity(1);
+            document.body.removeChild(textarea);
+          }
+        });
+      });
+    }
+
+    // Modalità per incollare immagini
+    function startPasteImage() {
+      resetMode();
+      currentMode = 'paste-image';
+      document.getElementById('paste-image-btn').classList.add('active');
+      document.addEventListener('paste', handlePaste);
+    }
+
+    // Gestione dell'evento paste
+    function handlePaste(e) {
+      if (currentMode !== 'paste-image') return;
+      e.preventDefault();
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          const url = URL.createObjectURL(blob);
+          const img = new Image();
+          img.src = url;
+          img.onload = () => {
+            const imageNode = new Konva.Image({
+              x: 100,
+              y: 100,
+              image: img,
+              width: img.width / 2,
+              height: img.height / 2,
+              draggable: true,
+            });
+            layer.add(imageNode);
+            addSelectionEvents(imageNode);
+            layer.batchDraw();
+            resetMode();
+          };
+          break;
+        }
+      }
+    }
+
+    // Menu contestuale per selezione multipla
+    function copyObjects() {
+      if (selectedShapes.length > 0) {
+        clipboard = selectedShapes.map(shape => shape.clone());
+        console.log("Oggetti copiati:", clipboard.length);
+        showNotification(`Copiati ${clipboard.length} oggetti`);
+      }
+      document.getElementById('context-menu').style.display = 'none';
+    }
+
+    function pasteObjects() {
+      if (clipboard.length > 0) {
+        const newObjects = clipboard.map(shape => {
+          const newShape = shape.clone({
+            x: shape.x() + 10,
+            y: shape.y() + 10,
+          });
+          layer.add(newShape);
+          addSelectionEvents(newShape);
+          if (newShape instanceof Konva.Text) {
+            setupTextEditing(newShape);
+          }
+          return newShape;
+        });
+        selectedShapes = newObjects;
+        tr.nodes(selectedShapes);
+        showProperties(selectedShapes);
+        showNotification(`Incollati ${selectedShapes.length} oggetti`);
+        console.log("Oggetti incollati:", selectedShapes.length);
+        layer.batchDraw();
+      }
+      document.getElementById('context-menu').style.display = 'none';
+    }
+
+    function duplicateObjects() {
+      if (selectedShapes.length > 0) {
+        const newObjects = selectedShapes.map(shape => {
+          const newShape = shape.clone({
+            x: shape.x() + 10,
+            y: shape.y() + 10,
+          });
+          layer.add(newShape);
+          addSelectionEvents(newShape);
+          if (newShape instanceof Konva.Text) {
+            setupTextEditing(newShape);
+          }
+          return newShape;
+        });
+        selectedShapes = newObjects;
+        tr.nodes(selectedShapes);
+        showProperties(selectedShapes);
+        showNotification(`Duplicati ${selectedShapes.length} oggetti`);
+        console.log("Oggetti duplicati:", selectedShapes.length);
+        layer.batchDraw();
+      }
+      document.getElementById('context-menu').style.display = 'none';
+    }
+
+    function cutObjects() {
+      if (selectedShapes.length > 0) {
+        clipboard = selectedShapes.map(shape => shape.clone());
+        selectedShapes.forEach(shape => shape.destroy());
+        tr.nodes([]);
+        selectedShapes = [];
+        document.getElementById('properties').style.display = 'none';
+        showNotification(`Tagliati ${clipboard.length} oggetti`);
+        console.log("Oggetti tagliati:", clipboard.length);
+        layer.batchDraw();
+      }
+      document.getElementById('context-menu').style.display = 'none';
+    }
+
+    function deleteObjects() {
+      if (selectedShapes.length > 0) {
+        const count = selectedShapes.length;
+        selectedShapes.forEach(shape => shape.destroy());
+        tr.nodes([]);
+        selectedShapes = [];
+        document.getElementById('properties').style.display = 'none';
+        showNotification(`Eliminati ${count} oggetti`);
+        console.log("Oggetti eliminati");
+        layer.batchDraw();
+      }
+      document.getElementById('context-menu').style.display = 'none';
+    }
+
+    // Mostra pannello proprietà per selezione multipla
+    function showProperties(shapes) {
+      const properties = document.getElementById('properties');
+      properties.style.display = 'block';
+
+      const strokeColorGroup = document.getElementById('strokeColorGroup');
+      const strokeWidthGroup = document.getElementById('strokeWidthGroup');
+      const textColorGroup = document.getElementById('textColorGroup');
+      const fontSizeGroup = document.getElementById('fontSizeGroup');
+      const superscriptGroup = document.getElementById('superscriptGroup');
+
+      const allText = shapes.every(shape => shape instanceof Konva.Text);
+      const allImages = shapes.every(shape => shape instanceof Konva.Image);
+      const allShapes = shapes.every(shape => !(shape instanceof Konva.Text) && !(shape instanceof Konva.Image));
+
+      if (allImages) {
+        strokeColorGroup.classList.add('hidden');
+        strokeWidthGroup.classList.add('hidden');
+        textColorGroup.classList.add('hidden');
+        fontSizeGroup.classList.add('hidden');
+        superscriptGroup.classList.add('hidden');
+      } else if (allText) {
+        strokeColorGroup.classList.add('hidden');
+        strokeWidthGroup.classList.add('hidden');
+        textColorGroup.classList.remove('hidden');
+        fontSizeGroup.classList.remove('hidden');
+        superscriptGroup.classList.remove('hidden');
+        document.getElementById('fontSize').value = shapes[0].fontSize();
+
+        // Aggiungi evento per il pulsante di apice
+        document.getElementById('superscriptBtn').onclick = () => {
+          shapes.forEach(shape => {
+            let text = shape.text();
+            // Sostituisci tutti i "2" con "²"
+            text = text.replace(/2/g, '²');
+            shape.text(text);
+          });
+          showNotification('2 convertito in apice');
+          layer.batchDraw();
+        };
+      } else if (allShapes) {
+        strokeColorGroup.classList.remove('hidden');
+        strokeWidthGroup.classList.remove('hidden');
+        textColorGroup.classList.add('hidden');
+        fontSizeGroup.classList.add('hidden');
+        superscriptGroup.classList.add('hidden');
+      } else {
+        strokeColorGroup.classList.add('hidden');
+        strokeWidthGroup.classList.add('hidden');
+        textColorGroup.classList.add('hidden');
+        fontSizeGroup.classList.add('hidden');
+        superscriptGroup.classList.add('hidden');
+      }
+
+      document.getElementById('strokeColor').onchange = () => {
+        if (!allImages && !allText) {
+          shapes.forEach(shape => {
+            if (!(shape instanceof Konva.Image) && !(shape instanceof Konva.Text)) {
+              shape.stroke(document.getElementById('strokeColor').value);
+            }
+          });
+          layer.batchDraw();
+        }
+      };
+      document.getElementById('strokeWidth').onchange = () => {
+        if (!allImages && !allText) {
+          shapes.forEach(shape => {
+            if (!(shape instanceof Konva.Image) && !(shape instanceof Konva.Text)) {
+              shape.strokeWidth(parseInt(document.getElementById('strokeWidth').value));
+            }
+          });
+          layer.batchDraw();
+        }
+      };
+      document.getElementById('textColor').onchange = () => {
+        if (allText) {
+          shapes.forEach(shape => {
+            shape.fill(document.getElementById('textColor').value);
+          });
+          layer.batchDraw();
+        }
+      };
+      document.getElementById('fontSize').onchange = () => {
+        if (allText) {
+          const newFontSize = parseInt(document.getElementById('fontSize').value);
+          if (newFontSize > 0) {
+            shapes.forEach(shape => {
+              shape.fontSize(newFontSize);
+              shape.originalFontSize = newFontSize;
+            });
+            layer.batchDraw();
+          }
+        }
+      };
+    }
+
+    // Esporta in PNG
+    function exportToPNG() {
+      const dataURL = stage.toDataURL();
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = 'lavagna.png';
+      link.click();
+    }
+
+    // Esporta in PDF
+    function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      const dataURL = stage.toDataURL();
+      pdf.addImage(dataURL, 'PNG', 0, 0, 210, 297);
+      pdf.save('lavagna.pdf');
+    }
+
+    // Inizializza
+    resetMode();
+    updateZoomIndicator();
+  </script>
+</body>
+</html>
